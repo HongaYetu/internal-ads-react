@@ -50,7 +50,6 @@ export async function serve(
   return post<AdServeResponse | null>(ctx, '/serve', {
     espaco_slug: req.espacoSlug,
     formato_id: req.formatoId ?? null,
-    origem: req.origem ?? null,
     sublocal: req.sublocal ?? null,
     device_id: ctx.deviceId,
     user_age: req.userAge ?? null,

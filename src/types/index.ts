@@ -36,10 +36,10 @@ export type AdTokens = {
 };
 
 export type AdServeRequest = {
-  /** Slug do espaço (ex: `humbi_shop`). Identificador estável entre ambientes. */
+  /** Slug do espaço/app (ex: `humbi_shop`). Identificador estável entre ambientes. */
   espacoSlug: string;
   formatoId?: number | null;
-  origem?: string | null;
+  /** Identificador do ecrã/local dentro do app (ex: `inicio`, `produto_show`). */
   sublocal?: string | null;
   userAge?: number | null;
   geoCountry?: string | null;
