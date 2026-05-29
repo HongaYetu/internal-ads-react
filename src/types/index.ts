@@ -54,7 +54,8 @@ export type AdsMode = 'direct' | 'proxy';
 
 export type AdsConfig = {
   baseUrl: string;
-  token: string;
+  /** Bearer token. Optional in `proxy` mode when the proxy authenticates via same-origin session cookie (Sanctum). */
+  token?: string | null;
   mode?: AdsMode;
   deviceId?: string | null;
   debug?: boolean;

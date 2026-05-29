@@ -3,7 +3,7 @@ import type { AdServeRequest, AdServeResponse } from '../types';
 
 type ClientCtx = {
   baseUrl: string;
-  token: string;
+  token?: string | null;
   deviceId: string | null;
 };
 
@@ -15,12 +15,11 @@ class AdsApiError extends Error {
 }
 
 function buildClient(ctx: ClientCtx): AxiosInstance {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (ctx.token) headers.Authorization = `Bearer ${ctx.token}`;
   return axios.create({
     baseURL: ctx.baseUrl,
-    headers: {
-      Authorization: `Bearer ${ctx.token}`,
-      Accept: 'application/json',
-    },
+    headers,
     withCredentials: true,
     timeout: 8000,
   });

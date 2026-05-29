@@ -4,7 +4,7 @@ import type { AdsConfig, AdsMode } from '../types';
 
 type AdsContextValue = {
   baseUrl: string;
-  token: string;
+  token?: string | null;
   mode: AdsMode;
   deviceId: string | null;
   debug: boolean;
@@ -29,7 +29,7 @@ export function AdsProvider({ config, children }: AdsProviderProps) {
   const value = useMemo<AdsContextValue>(
     () => ({
       baseUrl: config.baseUrl.replace(/\/+$/, ''),
-      token: config.token,
+      token: config.token ?? null,
       mode: config.mode ?? 'direct',
       deviceId,
       debug: config.debug ?? false,
