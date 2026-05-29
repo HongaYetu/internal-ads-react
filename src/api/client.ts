@@ -54,6 +54,8 @@ export async function serve(
     device_id: ctx.deviceId,
     user_age: req.userAge ?? null,
     geo_country: req.geoCountry ?? null,
+    slot_width: req.slotWidth ?? null,
+    slot_height: req.slotHeight ?? null,
   });
 }
 

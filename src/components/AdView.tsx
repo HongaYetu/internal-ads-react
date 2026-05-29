@@ -135,12 +135,16 @@ function renderAsset(asset: AdAsset | undefined, fallbackName: string): React.Re
   if (!asset) {
     return <div style={fallbackStyle}>{fallbackName}</div>;
   }
+  const aspectRatio =
+    asset.largura && asset.altura ? `${asset.largura} / ${asset.altura}` : '16 / 9';
+  const style: React.CSSProperties = { ...imgStyle, aspectRatio };
+
   if (asset.tipo === 'imagem' && asset.url) {
     return (
       <img
         src={asset.url}
         alt={fallbackName}
-        style={imgStyle}
+        style={style}
         loading="lazy"
         decoding="async"
       />
@@ -157,7 +161,7 @@ function renderAsset(asset: AdAsset | undefined, fallbackName: string): React.Re
         loop
         playsInline
         preload="metadata"
-        style={imgStyle}
+        style={style}
       />
     );
   }
@@ -168,7 +172,6 @@ const imgStyle: React.CSSProperties = {
   width: '100%',
   height: 'auto',
   display: 'block',
-  aspectRatio: '16 / 9',
   objectFit: 'cover',
 };
 

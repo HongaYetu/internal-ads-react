@@ -28,6 +28,8 @@ export function useAd(req: AdServeRequest): UseAdState {
   const espacoSlug = req.espacoSlug;
   const formatoId = req.formatoId ?? null;
   const sublocal = req.sublocal ?? null;
+  const slotWidth = req.slotWidth ?? null;
+  const slotHeight = req.slotHeight ?? null;
   const userAge = req.userAge ?? null;
   const geoCountry = req.geoCountry ?? null;
 
@@ -39,7 +41,7 @@ export function useAd(req: AdServeRequest): UseAdState {
     try {
       const data = await api.serve(
         { baseUrl, token, deviceId },
-        { espacoSlug, formatoId, sublocal, userAge, geoCountry },
+        { espacoSlug, formatoId, sublocal, userAge, geoCountry, slotWidth, slotHeight },
       );
       if (!data) {
         setAnuncio(null);
@@ -68,6 +70,8 @@ export function useAd(req: AdServeRequest): UseAdState {
     sublocal,
     userAge,
     geoCountry,
+    slotWidth,
+    slotHeight,
     debug,
   ]);
 

@@ -16,6 +16,15 @@ export type AdAsset = {
   tipo: 'imagem' | 'video' | 'texto';
   status?: AdAssetStatus | null;
   url: string | null;
+  /** Largura nativa do asset escolhido (px). Permite calcular aspect-ratio. */
+  largura?: number | null;
+  altura?: number | null;
+  /** `versao` quando o asset vem do `anuncio_asset_versoes` (resize por formato);
+   *  `original` quando é fallback ao asset original. */
+  fonte?: 'versao' | 'original' | null;
+  /** ID + slug do formato que a API escolheu para este slot. */
+  formato_id?: number | null;
+  formato_slug?: string | null;
   hls_url?: string | null;
   thumbnail_url?: string | null;
   qualities?: AdAssetQuality[] | null;
@@ -43,6 +52,9 @@ export type AdServeRequest = {
   sublocal?: string | null;
   userAge?: number | null;
   geoCountry?: string | null;
+  /** Dimensões reais do slot (px). Auto-preenchidas pelo `<AdSlot>` via ResizeObserver. */
+  slotWidth?: number | null;
+  slotHeight?: number | null;
 };
 
 export type AdServeResponse = {
