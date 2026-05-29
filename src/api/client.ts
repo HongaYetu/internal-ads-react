@@ -48,7 +48,7 @@ export async function serve(
   req: AdServeRequest,
 ): Promise<AdServeResponse | null> {
   return post<AdServeResponse | null>(ctx, '/serve', {
-    espaco_id: req.espacoId,
+    espaco_slug: req.espacoSlug,
     formato_id: req.formatoId ?? null,
     origem: req.origem ?? null,
     sublocal: req.sublocal ?? null,

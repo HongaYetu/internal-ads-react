@@ -36,7 +36,8 @@ export type AdTokens = {
 };
 
 export type AdServeRequest = {
-  espacoId: number;
+  /** Slug do espaço (ex: `humbi_shop`). Identificador estável entre ambientes. */
+  espacoSlug: string;
   formatoId?: number | null;
   origem?: string | null;
   sublocal?: string | null;

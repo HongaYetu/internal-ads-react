@@ -25,7 +25,7 @@ export function useAd(req: AdServeRequest): UseAdState {
   const [error, setError] = useState<Error | null>(null);
   const impressionMarked = useRef(false);
 
-  const espacoId = req.espacoId;
+  const espacoSlug = req.espacoSlug;
   const formatoId = req.formatoId ?? null;
   const origem = req.origem ?? null;
   const sublocal = req.sublocal ?? null;
@@ -40,7 +40,7 @@ export function useAd(req: AdServeRequest): UseAdState {
     try {
       const data = await api.serve(
         { baseUrl, token, deviceId },
-        { espacoId, formatoId, origem, sublocal, userAge, geoCountry },
+        { espacoSlug, formatoId, origem, sublocal, userAge, geoCountry },
       );
       if (!data) {
         setAnuncio(null);
@@ -64,7 +64,7 @@ export function useAd(req: AdServeRequest): UseAdState {
     baseUrl,
     token,
     deviceId,
-    espacoId,
+    espacoSlug,
     formatoId,
     origem,
     sublocal,
