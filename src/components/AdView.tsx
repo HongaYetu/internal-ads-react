@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useAdsContext } from '../context/AdsProvider';
 import { useAd } from '../hooks/useAd';
 import type { AdAsset, AdServeRequest, Anuncio } from '../types';
 
@@ -28,10 +29,21 @@ export function AdView(props: AdViewProps) {
     ...req
   } = props;
 
-  const { anuncio, loading, markImpression, markClick } = useAd(req);
+  const { anuncio, tokens, loading, markImpression, markClick } = useAd(req);
+  const { baseUrl, mode } = useAdsContext();
   const [visible, setVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Modo proxy → click é GET nativo via `<a href>`: o browser navega para o
+  // proxy (nova aba), o proxy regista server-side e devolve 302 para a URL
+  // destino. Funciona com middle-click, Cmd-click, é resistente a adblockers
+  // e elimina race entre `fetch` e `window.location.href` que estavam a
+  // perder cliques.
+  const useNativeAnchor = mode === 'proxy' && !!tokens?.click;
+  const clickHref = useNativeAnchor
+    ? `${baseUrl.replace(/\/+$/, '')}/click/${encodeURIComponent(tokens!.click)}`
+    : undefined;
 
   // Visibility tracking via IntersectionObserver — só marca impressão se >=50%
   // visível por `effectiveDelay` ms (IAB MRC standard).
@@ -99,6 +111,21 @@ export function AdView(props: AdViewProps) {
   }
 
   if (renderAd) {
+    if (useNativeAnchor) {
+      return (
+        <a
+          ref={containerRef as React.Ref<HTMLAnchorElement>}
+          className={className}
+          style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit', ...style }}
+          href={clickHref}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {renderAd(anuncio)}
+        </a>
+      );
+    }
+
     return (
       <div
         ref={containerRef}
@@ -108,6 +135,21 @@ export function AdView(props: AdViewProps) {
       >
         {renderAd(anuncio)}
       </div>
+    );
+  }
+
+  if (useNativeAnchor) {
+    return (
+      <a
+        ref={containerRef as React.Ref<HTMLAnchorElement>}
+        className={className}
+        style={{ cursor: 'pointer', overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'block', ...style }}
+        href={clickHref}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {renderAsset(asset, anuncio.nome)}
+      </a>
     );
   }
 
@@ -137,10 +179,18 @@ function renderAsset(asset: AdAsset | undefined, fallbackName: string): React.Re
   }
   const aspectRatio =
     asset.largura && asset.altura ? `${asset.largura} / ${asset.altura}` : '16 / 9';
-  const style: React.CSSProperties = { ...imgStyle, aspectRatio };
+  // Nunca escalar acima do tamanho natural do asset — evita banners enormes
+  // quando o slot é mais largo do que a criatividade. Quando o slot é mais
+  // estreito, a regra `width: 100%` faz o asset encolher proporcionalmente.
+  const style: React.CSSProperties = {
+    ...imgStyle,
+    aspectRatio,
+    ...(asset.largura ? { maxWidth: asset.largura } : null),
+    ...(asset.altura ? { maxHeight: asset.altura } : null),
+  };
 
-  if (asset.tipo === 'imagem' && asset.url) {
-    return (
+  const media =
+    asset.tipo === 'imagem' && asset.url ? (
       <img
         src={asset.url}
         alt={fallbackName}
@@ -148,13 +198,9 @@ function renderAsset(asset: AdAsset | undefined, fallbackName: string): React.Re
         loading="lazy"
         decoding="async"
       />
-    );
-  }
-  if (asset.tipo === 'video') {
-    const src = asset.hls_url || asset.url || undefined;
-    return (
+    ) : asset.tipo === 'video' ? (
       <video
-        src={src}
+        src={asset.hls_url || asset.url || undefined}
         poster={asset.thumbnail_url ?? undefined}
         autoPlay
         muted
@@ -163,16 +209,44 @@ function renderAsset(asset: AdAsset | undefined, fallbackName: string): React.Re
         preload="metadata"
         style={style}
       />
+    ) : (
+      <div style={fallbackStyle}>{fallbackName}</div>
     );
-  }
-  return <div style={fallbackStyle}>{fallbackName}</div>;
+
+  // Centramos no eixo horizontal — quando o slot é mais largo que o asset
+  // (já limitado por maxWidth), o ad fica centrado em vez de encostado à
+  // esquerda. Disclosure "Anúncio." é sobreposto no canto superior esquerdo
+  // do próprio asset (não do slot vazio).
+  const innerWrapStyle: React.CSSProperties = {
+    position: 'relative',
+    display: 'inline-block',
+    ...(asset.largura ? { maxWidth: asset.largura } : null),
+    width: '100%',
+  };
+
+  return (
+    <div style={centerWrapperStyle}>
+      <div style={innerWrapStyle}>
+        {media}
+        <span style={adLabelStyle}>Anúncio.</span>
+      </div>
+    </div>
+  );
 }
 
 const imgStyle: React.CSSProperties = {
   width: '100%',
   height: 'auto',
   display: 'block',
-  objectFit: 'cover',
+  objectFit: 'contain',
+  margin: '0 auto',
+};
+
+const centerWrapperStyle: React.CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
 };
 
 const fallbackStyle: React.CSSProperties = {
@@ -188,4 +262,22 @@ const skeletonStyle: React.CSSProperties = {
   aspectRatio: '16 / 9',
   backgroundColor: '#f3f4f6',
   borderRadius: 8,
+};
+
+const adLabelStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 6,
+  left: 6,
+  padding: '2px 6px',
+  fontSize: 10,
+  lineHeight: 1.2,
+  fontWeight: 600,
+  color: '#fff',
+  backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  borderRadius: 3,
+  letterSpacing: 0.2,
+  pointerEvents: 'none',
+  userSelect: 'none',
+  zIndex: 2,
+  textTransform: 'none',
 };

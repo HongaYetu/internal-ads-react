@@ -32,6 +32,9 @@ export function useAd(req: AdServeRequest): UseAdState {
   const slotHeight = req.slotHeight ?? null;
   const userAge = req.userAge ?? null;
   const geoCountry = req.geoCountry ?? null;
+  // Serialização estável para dep da `useCallback` — array de objectos quebraria
+  // a comparação por referência a cada render.
+  const formatosKey = req.formatos ? JSON.stringify(req.formatos) : '';
 
   const fetchAd = useCallback(async () => {
     if (!deviceId) return;
@@ -41,7 +44,16 @@ export function useAd(req: AdServeRequest): UseAdState {
     try {
       const data = await api.serve(
         { baseUrl, token, deviceId },
-        { espacoSlug, formatoId, sublocal, userAge, geoCountry, slotWidth, slotHeight },
+        {
+          espacoSlug,
+          formatoId,
+          sublocal,
+          userAge,
+          geoCountry,
+          slotWidth,
+          slotHeight,
+          formatos: formatosKey ? (JSON.parse(formatosKey) as { largura: number; altura: number }[]) : null,
+        },
       );
       if (!data) {
         setAnuncio(null);
@@ -72,6 +84,7 @@ export function useAd(req: AdServeRequest): UseAdState {
     geoCountry,
     slotWidth,
     slotHeight,
+    formatosKey,
     debug,
   ]);
 

@@ -56,6 +56,7 @@ export async function serve(
     geo_country: req.geoCountry ?? null,
     slot_width: req.slotWidth ?? null,
     slot_height: req.slotHeight ?? null,
+    formatos_aceites: req.formatos ?? null,
   });
 }
 

@@ -28,6 +28,10 @@ export type AdAsset = {
   hls_url?: string | null;
   thumbnail_url?: string | null;
   qualities?: AdAssetQuality[] | null;
+  /** Textos estruturados (anúncios nativos). Populado pela IA / criação manual. */
+  texto_titulo?: string | null;
+  texto_descricao?: string | null;
+  texto_cta?: string | null;
 };
 
 export type Anuncio = {
@@ -37,6 +41,38 @@ export type Anuncio = {
   cpm: number;
   cpc: number;
   assets: AdAsset[];
+  /** URL pública do logo da marca (anúncios nativos). */
+  logo_url?: string | null;
+  /** Nome do anunciante para exibição (ex: "Unitel"). */
+  anunciante?: string | null;
+};
+
+/**
+ * Dados normalizados para anúncios nativos. Derivado de `Anuncio` + 1º asset
+ * via `toNativeAdData()`. O consumer renderiza estes campos dentro do card.
+ */
+export type NativeAdData = {
+  headline: string;
+  descricao: string | null;
+  cta: string;
+  imageUrl: string | null;
+  imageLargura: number | null;
+  imageAltura: number | null;
+  logoUrl: string | null;
+  anunciante: string | null;
+  url: string | null;
+};
+
+/**
+ * Helpers passados a `renderCard()` do `<AdNativeSlot>`. O consumer aplica
+ * `ref` no elemento raíz do card (para tracking de impressão IAB) e usa
+ * `clickHref` num `<a>`/`<Link>` ou `onPress` num botão.
+ */
+export type NativeAdHelpers = {
+  /** URL absoluto para o proxy GET — usar como `href` no link do card. */
+  clickHref?: string | null;
+  /** Fallback para modo direct: chama o tracking de clique + abre destino. */
+  onPress: () => void | Promise<void>;
 };
 
 export type AdTokens = {
@@ -55,6 +91,14 @@ export type AdServeRequest = {
   /** Dimensões reais do slot (px). Auto-preenchidas pelo `<AdSlot>` via ResizeObserver. */
   slotWidth?: number | null;
   slotHeight?: number | null;
+  /**
+   * Lista de tamanhos exactos aceites pelo slot. Quando definida, o API só
+   * devolve anúncios cuja versão (ou original) corresponda EXACTAMENTE a uma
+   * das entradas. Se não houver match, devolve `data: null` (no-fill).
+   *
+   * Quando omitido (default), aplica matching aproximado por área/aspect-ratio.
+   */
+  formatos?: Array<{ largura: number; altura: number }> | null;
 };
 
 export type AdServeResponse = {

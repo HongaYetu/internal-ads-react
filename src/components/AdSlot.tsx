@@ -2,7 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AdView, type AdViewProps } from './AdView';
 
 export type AdSlotProps = AdViewProps & {
-  /** Altura reservada do skeleton (px). Default: 180. */
+  /**
+   * Altura reservada do skeleton (px) quando `formatos` não é fornecido.
+   * Quando `formatos` está presente, a altura é derivada do primeiro formato
+   * (proporcional à largura).
+   */
   reservedHeight?: number;
   /** Lazy mount via IntersectionObserver. Default: true. */
   lazy?: boolean;
@@ -13,17 +17,20 @@ export type AdSlotProps = AdViewProps & {
   wrapperStyle?: React.CSSProperties;
 };
 
-const SIZE_DRIFT_THRESHOLD = 0.1; // 10%
-
 /**
  * Wrapper recomendado para inserção em páginas/listas.
  *
+ * Filosofia (v0.5+): o tamanho do slot **vem da prop `formatos`**, não da
+ * medição do DOM. O consumer declara `formatos={[{largura:728,altura:90}]}`
+ * e o slot reserva exactamente 728×90 (centrado no parent), faz 1 só fetch
+ * com `formatos_aceites`, e a API devolve um asset desse tamanho ou no-fill.
+ *
  * - **Lazy mount**: só chama `/serve` quando o slot entra no viewport.
- * - **Skeleton com altura reservada** para evitar layout shift (CLS).
- * - **Auto-medição**: ResizeObserver mede o container e passa `slotWidth/slotHeight`
- *   ao `<AdView>` para a API escolher o asset com dimensões mais próximas. Refetch
- *   só quando o tamanho mudar ≥10% (debounce 300ms).
+ * - **Sem ResizeObserver**: nada de medição automática. Elimina o loop
+ *   width→fetch→render→width que causava 5–7 requests por slot.
  * - **Collapse-on-empty**: 0px quando não há anúncio.
+ * - **Sem `formatos`** (legacy): usa `reservedHeight` como altura e não envia
+ *   slot dims — a API faz matching aproximado pelo lado dela.
  */
 export function AdSlot(props: AdSlotProps) {
   const {
@@ -32,19 +39,32 @@ export function AdSlot(props: AdSlotProps) {
     skeletonColor = '#f3f4f6',
     wrapperClassName,
     wrapperStyle,
-    slotWidth: slotWidthOverride,
-    slotHeight: slotHeightOverride,
     ...adProps
   } = props;
 
   const [visible, setVisible] = useState(!lazy);
-  const [size, setSize] = useState<{ w: number; h: number } | null>(() =>
-    slotWidthOverride && slotHeightOverride
-      ? { w: slotWidthOverride, h: slotHeightOverride }
-      : null,
-  );
   const ref = useRef<HTMLDivElement | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Tamanho preferido derivado da prop `formatos`. O primeiro entry define a
+  // "intenção visual" do slot — se a API devolver um asset de tamanho
+  // diferente (porque consumer passou múltiplos formatos), o asset apenas
+  // se ajusta dentro do max-width via aspect-ratio do próprio elemento.
+  const primario = adProps.formatos?.[0] ?? null;
+
+  // Debug: imprime no console quando o slot monta para que o consumer possa
+  // verificar se `formatos` chegou.
+  useEffect(() => {
+    if (typeof console !== 'undefined') {
+      // eslint-disable-next-line no-console
+      console.log('[hongayetu/ads] AdSlot mount', {
+        espacoSlug: adProps.espacoSlug,
+        sublocal: adProps.sublocal,
+        formatos: adProps.formatos,
+        primario,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // IntersectionObserver — lazy mount.
   useEffect(() => {
@@ -67,53 +87,26 @@ export function AdSlot(props: AdSlotProps) {
     return () => observer.disconnect();
   }, [visible, lazy]);
 
-  // ResizeObserver — mede dimensões reais. Override manual via props tem
-  // prioridade. Debounce 300ms e threshold 10% para evitar refetch excessivo.
-  useEffect(() => {
-    if (slotWidthOverride && slotHeightOverride) return;
-    if (!ref.current) return;
-    if (typeof ResizeObserver === 'undefined') {
-      const rect = ref.current.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        setSize({ w: Math.round(rect.width), h: Math.round(rect.height) });
+  // Estilo do wrapper externo. Quando temos `formatos`, fixamos a largura
+  // (max-width) e proporção exactas; o slot fica centrado no parent.
+  const intrinsicStyle: React.CSSProperties = primario
+    ? {
+        width: '100%',
+        maxWidth: primario.largura,
+        aspectRatio: `${primario.largura} / ${primario.altura}`,
+        marginLeft: 'auto',
+        marginRight: 'auto',
       }
-      return;
-    }
-    const node = ref.current;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      const w = Math.round(entry.contentRect.width);
-      const h = Math.round(entry.contentRect.height);
-      if (w <= 0 || h <= 0) return;
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        setSize((prev) => {
-          if (!prev) return { w, h };
-          const dw = Math.abs(w - prev.w) / Math.max(w, prev.w);
-          const dh = Math.abs(h - prev.h) / Math.max(h, prev.h);
-          if (dw < SIZE_DRIFT_THRESHOLD && dh < SIZE_DRIFT_THRESHOLD) {
-            return prev; // mudança insignificante — não força refetch
-          }
-          return { w, h };
-        });
-      }, 300);
-    });
-    observer.observe(node);
-    return () => {
-      observer.disconnect();
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [slotWidthOverride, slotHeightOverride]);
+    : { height: reservedHeight };
 
-  // Skeleton lazy — observer ainda activo via ref para apanhar viewport.
+  // Skeleton lazy — observer activo via ref para apanhar viewport.
   if (lazy && !visible) {
     return (
       <div
         ref={ref}
         className={wrapperClassName}
         style={{
-          height: reservedHeight,
+          ...intrinsicStyle,
           backgroundColor: skeletonColor,
           borderRadius: 8,
           ...wrapperStyle,
@@ -123,15 +116,18 @@ export function AdSlot(props: AdSlotProps) {
   }
 
   return (
-    <div ref={ref} className={wrapperClassName} style={wrapperStyle}>
+    <div
+      ref={ref}
+      className={wrapperClassName}
+      style={{ ...intrinsicStyle, ...wrapperStyle }}
+    >
       <AdView
         {...adProps}
-        slotWidth={slotWidthOverride ?? size?.w ?? null}
-        slotHeight={slotHeightOverride ?? size?.h ?? null}
         renderLoading={() => (
           <div
             style={{
-              height: reservedHeight,
+              width: '100%',
+              height: '100%',
               backgroundColor: skeletonColor,
               borderRadius: 8,
             }}
