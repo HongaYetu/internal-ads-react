@@ -1,5 +1,5 @@
 import axios, { AxiosError, type AxiosInstance } from 'axios';
-import type { AdServeRequest, AdServeResponse } from '../types';
+import type { AdServeRequest, AdServeResponse, VideoEvent } from '../types';
 
 type ClientCtx = {
   baseUrl: string;
@@ -26,9 +26,14 @@ function buildClient(ctx: ClientCtx): AxiosInstance {
 }
 
 async function post<T>(ctx: ClientCtx, path: string, body: Record<string, unknown>): Promise<T> {
+  const url = `${ctx.baseUrl}${path}`;
+  // eslint-disable-next-line no-console
+  console.log('[hongayetu/ads] api.post →', { url, body });
   try {
     const res = await buildClient(ctx).post(path, body);
     const data = res.data;
+    // eslint-disable-next-line no-console
+    console.log('[hongayetu/ads] api.post ←', { url, status: res.status, estado: data?.estado, data });
     if (data?.estado === 'erro') {
       throw new AdsApiError(data?.texto ?? 'Erro do servidor', res.status);
     }
@@ -37,6 +42,8 @@ async function post<T>(ctx: ClientCtx, path: string, body: Record<string, unknow
     if (e instanceof AdsApiError) throw e;
     if (axios.isAxiosError(e)) {
       const ax = e as AxiosError<{ texto?: string; estado?: string }>;
+      // eslint-disable-next-line no-console
+      console.warn('[hongayetu/ads] api.post: axios error', { url, status: ax.response?.status, data: ax.response?.data });
       throw new AdsApiError(ax.response?.data?.texto ?? ax.message, ax.response?.status ?? 0);
     }
     throw e;
@@ -71,6 +78,20 @@ export async function trackClick(
   return post<{ redirect_url: string | null }>(ctx, '/click', {
     token,
     device_id: ctx.deviceId,
+  });
+}
+
+export async function trackVideoEvent(
+  ctx: ClientCtx,
+  token: string,
+  event: VideoEvent,
+  positionMs?: number,
+): Promise<void> {
+  await post(ctx, '/video-event', {
+    token,
+    event,
+    device_id: ctx.deviceId,
+    position_ms: positionMs ?? null,
   });
 }
 
