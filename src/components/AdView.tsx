@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAdsContext } from '../context/AdsProvider';
-import { useAd } from '../hooks/useAd';
+import { useAd, type UseAdState } from '../hooks/useAd';
 import type { AdAsset, AdServeRequest, Anuncio } from '../types';
 
 export type AdViewProps = AdServeRequest & {
@@ -16,6 +16,13 @@ export type AdViewProps = AdServeRequest & {
    * Default: 1000ms para imagem, 2000ms para vídeo (alinha com IAB MRC).
    */
   impressionDelayMs?: number;
+  /**
+   * Estado pré-fetchado de `useAd`. Quando fornecido, o componente NÃO faz
+   * o seu próprio pedido — partilha o estado do parent (ex: AdSlot). Evita
+   * fetch duplicado quando AdSlot precisa de decidir collapse antes de
+   * montar o AdView.
+   */
+  prefetched?: UseAdState;
 };
 
 export function AdView(props: AdViewProps) {
@@ -26,10 +33,13 @@ export function AdView(props: AdViewProps) {
     renderEmpty,
     renderLoading,
     impressionDelayMs,
+    prefetched,
     ...req
   } = props;
 
-  const { anuncio, tokens, loading, markImpression, markClick } = useAd(req);
+  const ownState = useAd({ ...req, enabled: !prefetched });
+  const state = prefetched ?? ownState;
+  const { anuncio, tokens, loading, markImpression, markClick } = state;
   const { baseUrl, mode } = useAdsContext();
   const [visible, setVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);

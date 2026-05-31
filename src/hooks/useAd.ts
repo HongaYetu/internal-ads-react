@@ -48,7 +48,12 @@ export function useAd(req: AdServeRequest): UseAdState {
   // a comparação por referência a cada render.
   const formatosKey = req.formatos ? JSON.stringify(req.formatos) : '';
 
+  const enabled = req.enabled !== false;
   const fetchAd = useCallback(async () => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     if (!deviceId) return;
     setLoading(true);
     setError(null);
@@ -102,6 +107,7 @@ export function useAd(req: AdServeRequest): UseAdState {
     slotHeight,
     formatosKey,
     debug,
+    enabled,
   ]);
 
   useEffect(() => {

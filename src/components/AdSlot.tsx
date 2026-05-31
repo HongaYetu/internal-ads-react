@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AdView, type AdViewProps } from './AdView';
+import { useAd } from '../hooks/useAd';
 
 export type AdSlotProps = AdViewProps & {
   /**
@@ -115,14 +116,47 @@ export function AdSlot(props: AdSlotProps) {
     );
   }
 
+  // Slot já visível — faz o fetch aqui (não em AdView) para podermos
+  // decidir colapsar o wrapper inteiro em caso de erro OU no-fill.
+  return (
+    <AdSlotVisible
+      adProps={adProps}
+      intrinsicStyle={intrinsicStyle}
+      wrapperClassName={wrapperClassName}
+      wrapperStyle={wrapperStyle}
+      skeletonColor={skeletonColor}
+    />
+  );
+}
+
+function AdSlotVisible({
+  adProps,
+  intrinsicStyle,
+  wrapperClassName,
+  wrapperStyle,
+  skeletonColor,
+}: {
+  adProps: AdViewProps;
+  intrinsicStyle: React.CSSProperties;
+  wrapperClassName?: string;
+  wrapperStyle?: React.CSSProperties;
+  skeletonColor: string;
+}) {
+  const state = useAd(adProps);
+
+  // Erro OU no-fill → colapsa totalmente (sem espaço em branco).
+  if (!state.loading && !state.anuncio) {
+    return null;
+  }
+
   return (
     <div
-      ref={ref}
       className={wrapperClassName}
       style={{ ...intrinsicStyle, ...wrapperStyle }}
     >
       <AdView
         {...adProps}
+        prefetched={state}
         renderLoading={() => (
           <div
             style={{

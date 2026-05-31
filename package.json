@@ -1,6 +1,6 @@
 {
   "name": "@hongayetu/internal-ads-react",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "description": "SDK React (web) para servir e tracking de anúncios da plataforma HongaYetu (consumidor da API v2).",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -24,7 +24,6 @@
     "prepublishOnly": "npm run build"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
     "access": "public"
   },
   "repository": {

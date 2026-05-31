@@ -103,6 +103,8 @@ export type AdServeRequest = {
    * Quando omitido (default), aplica matching aproximado por área/aspect-ratio.
    */
   formatos?: Array<{ largura: number; altura: number }> | null;
+  /** Quando `false`, o hook não dispara `/serve`. Útil para fork em wrappers como AdSlot. Default: true. */
+  enabled?: boolean;
 };
 
 /**
